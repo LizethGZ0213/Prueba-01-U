@@ -1,0 +1,71 @@
+metadata:
+  name: ${artifactId}
+  labels:
+    app: ${artifactId}
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: 'default'
+            - name: JAVA_MAX_MEM_RATIO
+              value: '0'
+            - name: JAVA_TOOL_OPTIONS
+              value:
+                -XX:+UnlockExperimentalVMOptions
+                -XX:+UseCGroupMemoryLimitForHeap
+                -Djava.net.preferIPv4Stack=true
+            - name: TZ
+              value: 'America/Mexico_City'
+          envFrom:
+            - secretRef:
+                name: bsi-informix-username-uno-data
+            - secretRef:
+                name: bsi-informix-estandar-data  
+          name: ${artifactId}
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 9779
+              name: prometheus
+              protocol: TCP
+            - containerPort: 8778
+              name: jolokia
+              protocol: TCP
+            - containerPort: 8181
+              name: actuator
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8181
+              scheme: HTTP
+            initialDelaySeconds: 140
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /actuator/health
+              port: 8181
+              scheme: HTTP
+            initialDelaySeconds: 140
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 300m
+              memory: 512Mi
+            requests:
+              cpu: 300m
+              memory: 256Mi
+          volumeMounts:
+          - name: ${artifactId}-config
+            mountPath: /deployments/config
+      volumes:
+        - name: ${artifactId}-config
+          configMap:
+            name: ${artifactId}
